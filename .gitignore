@@ -1,0 +1,7 @@
+.deps/*
+!.deps/eden-67bada77.tar.gz
+build/
+dist/
+results/
+.local/
+__pycache__/
