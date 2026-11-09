@@ -6,7 +6,7 @@
       "about": "Eden emulator source at the pinned commit (GitHub mirror archive)",
       "kind": "archive",
       "url": "https://github.com/eden-emulator/mirror/archive/67bada77f8a43a90da2e94e89b8e7da73c256989.tar.gz",
-      "sha256": "3e5d3c5825f0272c7e609497d9c9bbc1124f1ab4161e419e7f3a0f8c18f7d0bd",
+      "sha256": "8f4cc9463ee6866fa40769f941b260e01f4a860b6bc2bb71c0fff6f2ee3700b7",
       "save": ".deps/eden-67bada77.tar.gz",
       "extract": ".deps",
       "creates": ".deps/mirror-67bada77f8a43a90da2e94e89b8e7da73c256989/CMakeLists.txt"
