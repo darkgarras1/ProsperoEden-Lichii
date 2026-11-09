@@ -6,7 +6,8 @@ root=Path(__file__).resolve().parents[1]
 cache=Path((root/'.local/headless-cache').read_text().strip())
 worker=(cache/'native-local/headless/gpu_thread.cpp').read_text()
 start=worker.index('u64 ThreadManager::PushCommand(')
-body=worker[start:worker.index('\n} // namespace',start)]
+end=worker.index('\n}',start)+2
+body=worker[start:end]
 assert 'state.queue.EmplaceWait(' not in body
 main=(root/'headless/main.cpp').read_text()
 assert 'system.Pause();' not in main
@@ -29,9 +30,6 @@ struct ThreadManager {
           Common::SPSCQueue<Item,2> queue; std::condition_variable_any cv; } state;
  std::stop_source stop_source;
  u64 PushCommand(CommandData&&,bool,bool);
- // The worker file defines these after PushCommand; here there is no worker to end.
- void NotifyShutdown();
- void Stop() { stop_source.request_stop(); }
 };
 '''+body+r'''
 int main() {
