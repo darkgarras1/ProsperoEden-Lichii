@@ -119,6 +119,7 @@ jobs:
         with:
           path: ${{ env.CACHE_ROOT }}/downloads
           key: downloads-${{ hashFiles('tools/deps.json') }}
+          restore-keys: downloads-
 
       - name: Fetch dependencies
         run: make deps
@@ -136,6 +137,7 @@ jobs:
             ${{ env.RADV_NATIVE }}/zlib
             build/radv-isolated
           key: radv-3-${{ hashFiles('tools/deps.json', 'tools/patch-radv-wsi.py', 'tools/build-radv-dependencies.sh', 'tools/isolate-radv.py', 'tools/ci/ubuntu-24.04-packages.txt', 'tools/ci/setup-ubuntu-24.04.sh') }}
+          restore-keys: radv-3-
 
       - name: Restore ccache
         id: ccache
