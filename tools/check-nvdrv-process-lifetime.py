@@ -16,6 +16,16 @@ code=r'''
 using DAddr=unsigned long;using VAddr=unsigned long;
 namespace Common::Literals {}
 namespace Core {struct Asid {size_t id;};}
+namespace Devices {
+struct Nx2GpuMemoryRegistry {
+ std::vector<size_t> forgotten_asids;
+ static Nx2GpuMemoryRegistry& Get() {
+  static Nx2GpuMemoryRegistry registry;
+  return registry;
+ }
+ void ForgetDeviceRanges(size_t asid) { forgotten_asids.push_back(asid); }
+};
+}
 namespace Kernel {struct KProcess {int refs=1,memory=7; bool registered=false; int& GetMemory(){assert(refs);return memory;} void Open(int){assert(refs);++refs;} void Close(int){assert(refs);if(!--refs){assert(!registered);memory=0;}}};}
 struct SessionId {size_t id;};
 struct Mapper {DAddr GetRegionStart(){return 4096;}size_t GetRegionSize(){return 4096;}};
@@ -29,11 +39,15 @@ struct Container {Impl storage;Impl*impl=&storage;SessionId OpenSession(Kernel::
 int main(){
  Container c;Kernel::KProcess p,q;c.impl->host1x.smmu.owners={&p,&q};
  auto a=c.OpenSession(&p),b=c.OpenSession(&p);assert(a.id==b.id && p.refs==2);
+ auto& forgotten=Devices::Nx2GpuMemoryRegistry::Get().forgotten_asids;
  p.Close(0);assert(p.refs==1);c.CloseSession(a);assert(p.refs==1 && p.registered);
+ assert(forgotten.empty());
  c.CloseSession(b);assert(p.refs==0 && !p.registered);
+ assert((forgotten==std::vector<size_t>{0}));
  auto d=c.OpenSession(&q);assert(d.id==a.id && q.refs==2);
  c.impl->sessions[d.id].mapper=std::make_unique<Mapper>();c.impl->sessions[d.id].has_preallocated_area=true;
  c.CloseSession(d);assert(q.refs==1 && !q.registered);q.Close(0);
+ assert((forgotten==std::vector<size_t>{0,1}));
 }
 '''
 with tempfile.TemporaryDirectory() as d:
