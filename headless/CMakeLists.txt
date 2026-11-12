@@ -86,6 +86,35 @@ list(REMOVE_ITEM common_sources host_memory.cpp sparse_large_vector.cpp)
 set_property(TARGET common PROPERTY SOURCES "${common_sources}")
 target_sources(common PRIVATE "${PORT_ROOT}/src/host_memory.cpp" "${PORT_ROOT}/src/memory_pages.cpp")
 
+# Use the PS5 sparse backing for the GPU's small-page table as well.
+if(PS5_NATIVE)
+    file(READ "${PROJECT_SOURCE_DIR}/src/common/multi_level_page_table.inc" gpu_page_table)
+    set(gpu_table_map "void* base{mmap(nullptr, alloc_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0)};\n    if (base == MAP_FAILED)\n        base = nullptr;")
+    foreach(expected "${gpu_table_map}" "ASSERT(munmap(base_ptr, alloc_size) == 0);" "void* base = ptr;" "const u64 new_end = (start + size) >> first_level_shift;")
+        string(FIND "${gpu_page_table}" "${expected}" gpu_table_at)
+        if(gpu_table_at LESS 0)
+            message(FATAL_ERROR "Pinned MultiLevelPageTable implementation changed")
+        endif()
+    endforeach()
+    string(REPLACE "${gpu_table_map}"
+        "void* base = AllocateSparsePages(alloc_size);\n    if (!base) throw std::bad_alloc{};"
+        gpu_page_table "${gpu_page_table}")
+    string(REPLACE "ASSERT(munmap(base_ptr, alloc_size) == 0);" "FreeSparsePages(base_ptr, alloc_size);"
+        gpu_page_table "${gpu_page_table}")
+    string(REPLACE "void* base = ptr;"
+        "constexpr std::size_t slot_size = 2u * 1024u * 1024u;\n    for (std::size_t offset = 0; offset < first_level_chunk_size; offset += slot_size)\n        CommitSparsePage(reinterpret_cast<std::uintptr_t>(ptr + offset));\n    CommitSparsePage(reinterpret_cast<std::uintptr_t>(ptr + first_level_chunk_size - 1));\n    void* base = ptr;"
+        gpu_page_table "${gpu_page_table}")
+    string(REPLACE "const u64 new_end = (start + size) >> first_level_shift;"
+        "if (size == 0) return;\n    const u64 limit = u64{1} << address_space_bits;\n    if (!base_ptr || start >= limit || size > limit - start)\n        throw std::out_of_range(\"GPU page table reservation\");\n    const u64 new_end = (start + size - 1) >> first_level_shift;"
+        gpu_page_table "${gpu_page_table}")
+    write_derived("${PORT_BUILD_DIR}/multi_level_page_table.cpp"
+        "#include <cstddef>\n#include <cstdint>\n#include <new>\n#include <stdexcept>\nnamespace Common {\nvoid* AllocateSparsePages(std::size_t) noexcept;\nvoid FreeSparsePages(void*, std::size_t) noexcept;\nvoid CommitSparsePage(std::uintptr_t) noexcept;\n}\n${gpu_page_table}\nnamespace Common {\ntemplate class MultiLevelPageTable<u64>;\ntemplate class MultiLevelPageTable<u32>;\n}\n")
+    get_target_property(common_sources common SOURCES)
+    list(REMOVE_ITEM common_sources multi_level_page_table.cpp)
+    set_property(TARGET common PROPERTY SOURCES "${common_sources}")
+    target_sources(common PRIVATE "${PORT_BUILD_DIR}/multi_level_page_table.cpp")
+endif()
+
 # Eden's large tables (the guest page table, the GPU's address tables) stay sparse on the PS5:
 # their vector reserves its range with AllocateSparsePages and announces a first write to
 # CommitSparsePage (src/memory_pages.cpp) where upstream maps anonymous memory and calls
