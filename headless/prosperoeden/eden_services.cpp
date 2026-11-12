@@ -1048,7 +1048,7 @@ pe::ui::FolderInfo EdenServices::folder_info(const std::string& directory) {
     pe::ui::FolderInfo info;
     info.keys = Eden::FileExists(JoinPath(directory, "keys/prod.keys"));
     info.firmware = CountFiles(JoinPath(directory, "firmware"), {".nca"});
-    info.games = CountFiles(JoinPath(directory, "roms"), {".nsp", ".xci"});
+    info.games = CountFiles(JoinPath(directory, "roms"), {".nsp", ".xci", ".nup"});
     return info;
 }
 
