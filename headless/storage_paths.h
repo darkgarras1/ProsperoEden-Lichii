@@ -2,7 +2,7 @@
 // Where ProsperoEden keeps things. With filesystem access (elevation/elevation.hpp, requested
 // first thing in main) the app uses real console paths:
 //   app folder     the install location, normally /data/homebrew/PPSA99016
-//   data           /data/prosperoeden: config/ (prosperoeden.json), logs/, covers/, user/
+//   data           /data/darkeden: config/ (darkeden.json), logs/, covers/, user/
 // Without it (no resident service or local elfldr, or the request failed) the app has no data:
 // it reads the app folder as /app0, keeps only its logs in /download0, and the launcher says
 // that it has no access. It used to keep a second set of settings and saves in /download0
@@ -15,8 +15,8 @@
 #include <sys/stat.h>
 
 namespace Eden {
-inline constexpr const char* kDataDir = "/data/prosperoeden";
-inline constexpr const char* kDefaultAssetsDir = "/data/prosperoeden";
+inline constexpr const char* kDataDir = "/data/darkeden";
+inline constexpr const char* kDefaultAssetsDir = "/data/darkeden";
 inline constexpr const char* kInstallDir = "/data/homebrew/PPSA99016";
 
 // Filesystem access requested at startup: -1 not requested, 0 granted, otherwise the
@@ -58,7 +58,7 @@ inline std::string AppFile(std::string_view name) { return AppDir() + "/" + std:
 // Settings, logs, covers and Eden's user folder.
 inline std::string ConfigDir() { return std::string{kDataDir} + "/config"; }
 // The logs alone have a place in the sandbox: they are how a start without access is looked into.
-inline std::string LogsDir() { return FilesystemAccess() ? std::string{kDataDir} + "/logs" : "/download0/eden-headless-g7"; }
+inline std::string LogsDir() { return FilesystemAccess() ? std::string{kDataDir} + "/logs" : "/download0/darkeden"; }
 inline std::string CoversDir() { return std::string{kDataDir} + "/covers"; }
 inline std::string UserDir() { return std::string{kDataDir} + "/user"; }
 inline std::string ConfigFile(std::string_view name) { return ConfigDir() + "/" + std::string(name); }

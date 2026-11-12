@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Everything the launcher remembers, in one JSON file (config/prosperoeden.json):
+// Everything the launcher remembers, in one JSON file (config/darkeden.json):
 //
 //   {
 //     "version": 1,
@@ -142,7 +142,7 @@ inline bool ValidRomFilename(std::string_view name) {
     return extension == ".nsp" || extension == ".xci";
 }
 
-inline std::string SettingsFile() { return ConfigFile("prosperoeden.json"); }
+inline std::string SettingsFile() { return ConfigFile("darkeden.json"); }
 
 namespace Settings {
 using Json = nlohmann::json;

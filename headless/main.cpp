@@ -129,73 +129,7 @@ public:
     }
 };
 
-#ifdef PS5_NATIVE
-// First start with filesystem access: copy what the sandbox kept (settings, covers, Eden's saves
-// and caches) into /data/prosperoeden. Only folders that do not exist yet are filled, and the
-// sandbox copy stays, so an older ProsperoEden still finds its data.
-static void MigrateSandboxData() {
-    const std::filesystem::path sandbox{"/mnt/sandbox/PPSA99016_000/download0"};
-    const std::pair<std::filesystem::path, std::string> moves[] = {
-        {sandbox / "eden-headless-g7/user", Eden::UserDir()},
-        {sandbox / "prosperoeden/covers", Eden::CoversDir()},
-    };
-    const auto options = std::filesystem::copy_options::recursive | std::filesystem::copy_options::skip_existing;
-    for (const auto& [from, to] : moves) {
-        std::error_code error;
-        if (Eden::DirectoryExists(to) || !Eden::DirectoryExists(from.string())) continue;
-        std::filesystem::copy(from, to, options, error);
-        const std::string detail = from.string() + " -> " + to + (error ? " failed: " + error.message() : "");
-        Eden::Report("data migration", detail.c_str());
-    }
-    // Settings files (not the covers folder) go to config/.
-    if (!Eden::DirectoryExists(Eden::ConfigDir()) && Eden::DirectoryExists((sandbox / "prosperoeden").string())) {
-        std::error_code error;
-        std::filesystem::create_directories(Eden::ConfigDir(), error);
-        for (std::filesystem::directory_iterator it{sandbox / "prosperoeden", error}, end; !error && it != end; it.increment(error))
-            if (it->is_regular_file())
-                std::filesystem::copy_file(it->path(), std::filesystem::path{Eden::ConfigDir()} / it->path().filename(),
-                                           std::filesystem::copy_options::skip_existing, error);
-        Eden::Report("data migration", error ? ("settings failed: " + error.message()).c_str() : "settings copied");
-    }
-}
-#endif
 
-#ifdef PS5_NATIVE
-// Game files an early version kept inside the app's folder (assets/ with keys, firmware and
-// roms) move to /data/prosperoeden, where replacing the app cannot take them away: an update
-// that replaces the whole folder left the app without its keys and games. Both are on /data, so
-// it is a rename of each folder. Nothing moves unless all of it can: a folder chosen in Settings,
-// or anything already in /data/prosperoeden, leaves everything where it is.
-static void MoveGameFilesOutOfTheApp() {
-    const std::string from = std::string{Eden::kInstallDir} + "/assets", to = Eden::kDefaultAssetsDir;
-    const std::string saved = Eden::LoadSavedAssetsDir();
-    if ((!saved.empty() && saved != from) || !Eden::FileExists(from + "/keys/prod.keys") ||
-        Eden::FileExists(to + "/keys/prod.keys"))
-        return;
-    static constexpr const char* kFolders[] = {"keys", "firmware", "roms", "updates", "mods", "ryujinx", "save-import"};
-    (void)mkdir(to.c_str(), 0777);
-    for (const char* folder : kFolders) {
-        const std::string target = to + "/" + folder;
-        if (Eden::DirectoryExists(from + "/" + folder) && rmdir(target.c_str()) != 0 && errno != ENOENT) {
-            Eden::Report("game files", ("Left in the app's folder: " + target + " already holds files").c_str());
-            return;
-        }
-    }
-    int moved = 0;
-    for (const char* folder : kFolders) {
-        const std::string source = from + "/" + folder, target = to + "/" + folder;
-        if (!Eden::DirectoryExists(source)) continue;
-        if (std::rename(source.c_str(), target.c_str()) != 0) {
-            Eden::Report("game files", ("Could not move " + source + " to " + target + ": " + std::strerror(errno)).c_str());
-            continue;
-        }
-        ++moved;
-    }
-    if (!saved.empty()) (void)Eden::SaveAssetsDir(to);
-    Eden::Report("game files", (std::to_string(moved) + " folders moved from " + from + " to " + to +
-                                ", where an update of the app leaves them alone").c_str());
-}
-#endif
 
 // A game that has single Joy-Cons held sideways (their hold type, set by the game) is played on a
 // DualSense held as usual: the pad then turns the stick, the button places and the motion by a
@@ -266,8 +200,6 @@ int main(int argc, char** argv) {
         if (getegid() != getgid() && setegid(getgid()) != 0)
             Eden::Report("filesystem access", "Could not match the effective group; RADV's disk cache stays off");
         if (Eden::FilesystemAccess()) {
-            MigrateSandboxData();
-            MoveGameFilesOutOfTheApp();
         }
         for (const auto& folder : {Eden::UserDir(), Eden::ConfigDir(), Eden::CoversDir(), Eden::LogsDir()}) {
             std::error_code folder_error;

@@ -19,33 +19,33 @@ namespace theme
 {
 
 // Backgrounds
-inline const Color kBase = Color::rgb(0x06090a);
-inline const Color kScrim = Color::rgb(0x010806);
-inline const Color kGlass = Color::rgb(0x16221d);  // home panels
-inline const Color kPanel = Color::rgb(0x0b1713);  // screens and dialogs
-inline const Color kPanelEdge = Color::rgb(0x768e75);
-inline const Color kRow = Color::rgb(0x17241e);
-inline const Color kRowEdge = Color::rgb(0x6a8267);
-inline const Color kRowFocus = Color::rgb(0x294433);
+inline const Color kBase = Color::rgb(0x071225);
+inline const Color kScrim = Color::rgb(0x030a16);
+inline const Color kGlass = Color::rgb(0x102844);  // home panels
+inline const Color kPanel = Color::rgb(0x0a1b32);  // screens and dialogs
+inline const Color kPanelEdge = Color::rgb(0x517ca6);
+inline const Color kRow = Color::rgb(0x132d4b);
+inline const Color kRowEdge = Color::rgb(0x456f98);
+inline const Color kRowFocus = Color::rgb(0x225082);
 
-// The accent: lime to deep green, left to right.
-inline const Color kLime = Color::rgb(0xa9db63);
-inline const Color kLimeDeep = Color::rgb(0x245d4a);
-inline const Color kLimePale = Color::rgb(0xdfe8a6);
-inline const Color kSun = Color::rgb(0xffd76a);
+// The accent: sky blue to deep blue, left to right.
+inline const Color kLime = Color::rgb(0x65c6ff);
+inline const Color kLimeDeep = Color::rgb(0x2052a3);
+inline const Color kLimePale = Color::rgb(0xc2e9ff);
+inline const Color kSun = Color::rgb(0x79ddff);
 
 // Text
-inline const Color kText = Color::rgb(0xf0f5f2);
-inline const Color kTitle = Color::rgb(0xfffcef);
-inline const Color kValue = Color::rgb(0xf2f4e9);
-inline const Color kBody = Color::rgb(0xe2e8d7);
-inline const Color kCopy = Color::rgb(0xc5d0bd);
-inline const Color kMeta = Color::rgb(0xb7c6b5);
-inline const Color kLabel = Color::rgb(0xaebdaa);
-inline const Color kMuted = Color::rgb(0xaab8ac);
-inline const Color kFaint = Color::rgb(0x8c9e90);
+inline const Color kText = Color::rgb(0xf1f8ff);
+inline const Color kTitle = Color::rgb(0xffffff);
+inline const Color kValue = Color::rgb(0xeaf6ff);
+inline const Color kBody = Color::rgb(0xdcecff);
+inline const Color kCopy = Color::rgb(0xbbd4ef);
+inline const Color kMeta = Color::rgb(0xadc8e6);
+inline const Color kLabel = Color::rgb(0xa2bddb);
+inline const Color kMuted = Color::rgb(0x9eb8d6);
+inline const Color kFaint = Color::rgb(0x829cbb);
 inline const Color kWarning = Color::rgb(0xe8b39a);
-inline const Color kRule = Color::rgb(0x536b55);
+inline const Color kRule = Color::rgb(0x38597a);
 
 // Type sizes (Montserrat Medium)
 constexpr float kDisplay = 48.0f;
