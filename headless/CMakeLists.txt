@@ -891,6 +891,26 @@ write_derived("${PORT_BUILD_DIR}/application_functions.cpp" "${app_functions_sou
 list(REMOVE_ITEM core_sources "hle/service/am/service/application_functions.cpp")
 list(APPEND core_sources "${PORT_BUILD_DIR}/application_functions.cpp")
 set_property(TARGET core PROPERTY SOURCES "${core_sources}")
+# Experimental PS5 budget for NX2: reduce the application pool by exactly the
+# DRAM reduction, keeping the graphics reservation and other pools intact.
+if(PS5_NATIVE)
+    set(nx2_budget_source "hle/kernel/board/nintendo/nx/k_system_control.cpp")
+    file(READ "${PROJECT_SOURCE_DIR}/src/core/${nx2_budget_source}" nx2_budget)
+    foreach(expected "return 12_GiB + KSystemControl::Nx2GraphicsServerMemorySize" "return 9809_MiB")
+        string(FIND "${nx2_budget}" "${expected}" nx2_budget_at)
+        if(nx2_budget_at LESS 0)
+            message(FATAL_ERROR "Pinned Switch 2 memory layout changed: ${expected}")
+        endif()
+    endforeach()
+    string(REPLACE "return 12_GiB + KSystemControl::Nx2GraphicsServerMemorySize"
+        "return 8_GiB + KSystemControl::Nx2GraphicsServerMemorySize" nx2_budget "${nx2_budget}")
+    string(REPLACE "return 9809_MiB" "return 9809_MiB - 4_GiB" nx2_budget "${nx2_budget}")
+    write_derived("${PORT_BUILD_DIR}/k_system_control.cpp" "${nx2_budget}")
+    list(REMOVE_ITEM core_sources "${nx2_budget_source}")
+    list(APPEND core_sources "${PORT_BUILD_DIR}/k_system_control.cpp")
+    set_property(TARGET core PROPERTY SOURCES "${core_sources}")
+endif()
+
 # Core's NS query service owns this implementation from frontend_common.
 target_sources(core PRIVATE "${PROJECT_SOURCE_DIR}/src/frontend_common/play_time_manager.cpp")
 
