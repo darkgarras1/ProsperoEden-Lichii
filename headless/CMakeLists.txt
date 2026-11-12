@@ -775,10 +775,10 @@ string(REPLACE "    std::unique_lock lk{m_guard};\n    m_on_interrupt.wait(lk, [
     ::Eden::Performance::CountIdle(m_core_index, ::Eden::Performance::NowNs() - start, slept);
 }]=] physical_core_source "${physical_core_source}")
 string(REPLACE "${prefetch_old}"
-    "            } else {\n                interface->LogBacktrace(process);\n                if (prefetch_abort)\n                    ::Eden::RecordGuestFault(\"guest thread \" + Core::GetThreadName(thread).value_or(\"?\") +\n                                             \" jumped to an unmapped address\");\n            }\n            thread->RequestSuspend(kernel, SuspendType::Debug);"
+    "            } else {\n                interface->LogBacktrace(process);\n                if (prefetch_abort) {\n                    const auto& context = thread->GetContext();\n                    std::fprintf(stderr, \"DARKEDEN_GUEST_FAULT pc=0x%llx lr=0x%llx sp=0x%llx\\n\",\n                                 static_cast<unsigned long long>(context.pc),\n                                 static_cast<unsigned long long>(context.lr),\n                                 static_cast<unsigned long long>(context.sp));\n                    ::Eden::RecordGuestFault(\"guest thread \" + Core::GetThreadName(thread).value_or(\"?\") +\n                                             \" jumped to an unmapped address\");\n                }\n            }\n            thread->RequestSuspend(kernel, SuspendType::Debug);"
     physical_core_source "${physical_core_source}")
 write_derived("${PORT_BUILD_DIR}/physical_core.cpp"
-    "#include \"${EDEN_PORT_DIR}/guest_fault.h\"\n#include \"${EDEN_PORT_DIR}/performance.h\"\n#include \"core/arm/debug.h\"\n${physical_core_source}")
+    "#include \"${EDEN_PORT_DIR}/guest_fault.h\"\n#include \"${EDEN_PORT_DIR}/performance.h\"\n#include \"core/arm/debug.h\"\n#include <cstdio>\n${physical_core_source}")
 list(REMOVE_ITEM core_sources "hle/kernel/physical_core.cpp")
 list(APPEND core_sources "${PORT_BUILD_DIR}/physical_core.cpp")
 if(EDEN_DEV_PROFILE)
