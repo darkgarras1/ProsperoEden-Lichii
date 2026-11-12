@@ -23,7 +23,7 @@ FONT = ROOT / "third_party/fonts/Montserrat-Medium.ttf"
 OUTPUT = ROOT / "headless/loading_text.glsl"
 
 # The lines the screen shows, in the order the shader names them (loading_scene.glsl).
-LINES = ["PROSPEROEDEN", "READING THE GAME", "STARTING GRAPHICS", "BUILDING SHADERS", "STARTING THE GAME",
+LINES = ["DARKEDEN", "READING THE GAME", "STARTING GRAPHICS", "BUILDING SHADERS", "STARTING THE GAME",
          "LOADING", "S"]
 # Only the glyphs the lines use, then the digits and signs of the figures.
 GLYPHS = "".join(sorted(set("".join(LINES)) - {" "})) + "0123456789%/"

@@ -141,7 +141,7 @@ void Launcher::press_files(Key key)
     case Key::triangle:
     {
         const bool saved = services_.set_files_folder(browse_dir_);
-        say(saved ? tr("Saved. Reopen ProsperoEden to use this folder.") :
+        say(saved ? tr("Saved. Reopen DarkEden to use this folder.") :
                     tr("Could not save the folder. Please try again."),
             !saved);
         cue(saved ? Cue::saved : Cue::error);
@@ -152,7 +152,7 @@ void Launcher::press_files(Key key)
         const std::string fallback = services_.default_files_folder();
         const bool saved = services_.set_files_folder(fallback);
         (void)browse_to(fallback);
-        say(saved ? tr("Default folder saved. Reopen ProsperoEden to use it.") :
+        say(saved ? tr("Default folder saved. Reopen DarkEden to use it.") :
                     tr("Could not save the folder. Please try again."),
             !saved);
         cue(saved ? Cue::saved : Cue::error);
@@ -429,7 +429,7 @@ void Launcher::draw_language(Canvas &c)
 void Launcher::draw_about(Canvas &c)
 {
     gfx::DrawList &list = c.list;
-    draw_frame(c, tr("About ProsperoEden"), tr("Credits and setup"));
+    draw_frame(c, tr("About DarkEden"), tr("Credits and setup"));
 
     glass(c, kListPanel, 26.0f, theme::kPanel.with_alpha(0.80f), theme::kPanelEdge.with_alpha(0.55f));
     text(c, tr("PROJECT CREDITS"), 144.0f, baseline(210.0f, 28.0f, theme::kSmall), theme::kSmall,
@@ -446,13 +446,13 @@ void Launcher::draw_about(Canvas &c)
          theme::kLimePale, Align::left, 2.0f);
     text_block(c,
                tr("Thanks to the whole PS5 homebrew community and to every developer whose drivers, "
-               "tools and libraries make ProsperoEden possible."),
+               "tools and libraries make DarkEden possible."),
                144.0f, baseline(500.0f, 36.0f, theme::kText24), theme::kText24, 36.0f, theme::kBody,
                748.0f, 3, kShrink);
     list.rounded_rect({144.0f, 628.0f, 748.0f, 1.0f}, 0.0f, theme::kRule);
     text(c, tr("PS5 EDITION"), 144.0f, baseline(648.0f, 30.0f, theme::kSmall), theme::kSmall,
          theme::kLimePale, Align::left, 2.0f);
-    text_block(c, tr("ProsperoEden is an unofficial PS5 port brought to you by BlackBearReloaded."),
+    text_block(c, tr("DarkEden is an unofficial PS5 port brought to you by BlackBearReloaded."),
                144.0f, baseline(684.0f, 36.0f, theme::kText24), theme::kText24, 36.0f, theme::kBody,
                748.0f, 2, kShrink);
     text_shrink(c, tr("Menu sound effects made with ElevenLabs."), 144.0f,
