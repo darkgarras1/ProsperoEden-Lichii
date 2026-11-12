@@ -688,12 +688,10 @@ std::vector<pe::ui::Game> EdenServices::games() {
     };
     for (const auto& entry : entries) {
         const std::string file = entry.path().filename().string();
-        const std::size_t dot = file.find_last_of('.');
-        if (file == "." || file == ".." || dot == std::string::npos) continue;
-        std::string format = file.substr(dot + 1);
+        if (!Eden::ValidRomFilename(file)) continue;
+        std::string format = file.substr(file.size() - 3);
         std::transform(format.begin(), format.end(), format.begin(),
                        [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
-        if (format != "NSP" && format != "XCI") continue;
         const std::string path = Eden::AssetsPath("roms/" + file);
         struct stat info {};
         if (stat(path.c_str(), &info) != 0 || !S_ISREG(info.st_mode)) continue;
