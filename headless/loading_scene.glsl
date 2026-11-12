@@ -3,21 +3,7 @@
 // in this shader (no textures). Shared by both graphics backends, which add their own #version
 // line, loading_text.glsl before this file, and a main().
 //
-//   bool darkeden_maple(vec2 p)
-{
-    const vec2 outline[25] = vec2[25](vec2(50.0, 5.0), vec2(59.0, 25.0), vec2(66.0, 20.0), vec2(64.0, 43.0), vec2(78.0, 32.0), vec2(81.0, 42.0), vec2(95.0, 39.0), vec2(89.0, 54.0), vec2(95.0, 61.0), vec2(66.0, 77.0), vec2(69.0, 84.0), vec2(54.0, 82.0), vec2(54.0, 96.0), vec2(46.0, 96.0), vec2(46.0, 82.0), vec2(31.0, 84.0), vec2(34.0, 77.0), vec2(5.0, 61.0), vec2(11.0, 54.0), vec2(5.0, 39.0), vec2(19.0, 42.0), vec2(22.0, 32.0), vec2(36.0, 43.0), vec2(34.0, 20.0), vec2(41.0, 25.0));
-    bool inside = false;
-    for (int i = 0, j = 24; i < 25; j = i++)
-    {
-        vec2 a = outline[j], b = outline[i];
-        if ((a.y > p.y) != (b.y > p.y))
-            if (p.x < a.x + (b.x - a.x) * (p.y - a.y) / (b.y - a.y))
-                inside = !inside;
-    }
-    return inside;
-}
-
-vec3 loading_scene(vec2 pixel, vec2 size, float seconds, uint state[24])
+//   vec3 loading_scene(vec2 pixel, vec2 size, float seconds, uint state[24])
 //
 // pixel has its origin at the bottom left; seconds counts from the start of loading. With 1000
 // added to it nothing on the screen moves (Settings > Accessibility, reduced motion).
@@ -140,6 +126,20 @@ float pill(vec2 pixel, vec2 from, vec2 to, float radius)
     vec2 b = vec2(max(to.x - radius, a.x), a.y);
     float along = clamp(pixel.x, a.x, b.x);
     return clamp(radius - length(pixel - vec2(along, a.y)) + 0.5, 0.0, 1.0);
+}
+
+bool darkeden_maple(vec2 p)
+{
+    const vec2 outline[25] = vec2[25](vec2(50.0, 5.0), vec2(59.0, 25.0), vec2(66.0, 20.0), vec2(64.0, 43.0), vec2(78.0, 32.0), vec2(81.0, 42.0), vec2(95.0, 39.0), vec2(89.0, 54.0), vec2(95.0, 61.0), vec2(66.0, 77.0), vec2(69.0, 84.0), vec2(54.0, 82.0), vec2(54.0, 96.0), vec2(46.0, 96.0), vec2(46.0, 82.0), vec2(31.0, 84.0), vec2(34.0, 77.0), vec2(5.0, 61.0), vec2(11.0, 54.0), vec2(5.0, 39.0), vec2(19.0, 42.0), vec2(22.0, 32.0), vec2(36.0, 43.0), vec2(34.0, 20.0), vec2(41.0, 25.0));
+    bool inside = false;
+    for (int i = 0, j = 24; i < 25; j = i++)
+    {
+        vec2 a = outline[j], b = outline[i];
+        if ((a.y > p.y) != (b.y > p.y))
+            if (p.x < a.x + (b.x - a.x) * (p.y - a.y) / (b.y - a.y))
+                inside = !inside;
+    }
+    return inside;
 }
 
 vec3 loading_scene(vec2 pixel, vec2 size, float seconds, uint state[24])
