@@ -7,9 +7,9 @@
   "attribute": 0,
   "attribute2": 0,
   "attribute3": 524352,
-  "conceptId": "99016",
+  "conceptId": "99017",
   "contentBadgeType": 1,
-  "contentId": "UP9000-PPSA99016_00-PROSPEROEDEN0001",
+  "contentId": "UP9000-PPSA99017_00-DARKEDEN00000001",
   "contentVersion": "01.000.111",
   "downloadDataSize": 256,
   "gameIntent": {
@@ -33,6 +33,6 @@
   },
   "requiredSystemSoftwareVersion": "0x0000000000000000",
   "sdkVersion": "0x0000000000000000",
-  "titleId": "PPSA99016",
+  "titleId": "PPSA99017",
   "versionFileUri": ""
 }

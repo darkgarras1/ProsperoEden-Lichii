@@ -173,33 +173,22 @@ int main(int argc, char** argv) {
         // The PS5 keyboard's module, for a game's text entry: asked for before anything else
         // changes what the app may load (system_keyboard.h).
         Eden::BootTrace::Line("PS5 keyboard module: %#x", static_cast<unsigned>(Eden::PrepareSystemKeyboard()));
-        Eden::BootTrace::Line("requesting filesystem access");
-        // Filesystem access beyond the sandbox, first: every path below depends on it
-        // (assets_dir.h). A resident upstream Lapy service gets the first opportunity; otherwise
-        // the packaged exact-title upstream helper is sent to the local elfldr. ProsperoEden
-        // contains no locally implemented kernel mutation code. If neither path works, the app
-        // keeps its sandbox paths.
+        std::error_code storage_error;
+        std::filesystem::create_directories(Eden::kDataDir, storage_error);
+        Eden::FilesystemAccessStatus() = storage_error.value();
+        Eden::BootTrace::Line("DarkEden storage access status=%d", Eden::FilesystemAccessStatus());
 #if defined(EDEN_DEV_PROFILE)
-        // Development: a start without access, to see what the launcher says then.
         if (access("/app0/no-filesystem-access.txt", F_OK) == 0) Eden::FilesystemAccessStatus() = 99;
-        else
-#endif
-        Eden::FilesystemAccessStatus() = static_cast<int>(elevation::request(elevation::Capability::filesystem));
-        Eden::BootTrace::Line("filesystem access returned status=%d, uid %d/%d gid %d/%d", Eden::FilesystemAccessStatus(),
-                              static_cast<int>(getuid()), static_cast<int>(geteuid()), static_cast<int>(getgid()),
-                              static_cast<int>(getegid()));
-#if defined(EDEN_DEV_PROFILE)
-        // Upstream Lapy deliberately accepts only a single-threaded target. Keep every
-        // development worker behind the completed elevation exchange.
         Eden::Stall::Start();
 #endif
-        // Elevation leaves the effective group (1) apart from the real one (0), and Mesa turns
-        // RADV's disk cache off for a process whose real and effective ids differ, so no
-        // compiled shader was ever kept between sessions. Match them; the effective user is
-        // root, which may set its group.
-        if (getegid() != getgid() && setegid(getgid()) != 0)
-            Eden::Report("filesystem access", "Could not match the effective group; RADV's disk cache stays off");
         if (Eden::FilesystemAccess()) {
+            for (const char* folder : {"keys", "firmware", "roms", "updates", "mods"}) {
+                std::error_code folder_error;
+                std::filesystem::create_directories(std::filesystem::path{Eden::kDataDir} / folder,
+                                                    folder_error);
+                if (folder_error)
+                    Eden::BootTrace::Line("could not create %s: %s", folder, folder_error.message().c_str());
+            }
         }
         for (const auto& folder : {Eden::UserDir(), Eden::ConfigDir(), Eden::CoversDir(), Eden::LogsDir()}) {
             std::error_code folder_error;
@@ -230,7 +219,7 @@ int main(int argc, char** argv) {
         Eden::Crash::Install(Eden::LogsDir(), Eden::kAppVersion, last_crash.restarted);
         Eden::BootTrace::Ready(Eden::LogsDir(), Eden::FilesystemAccess());
         Eden::BootTrace::Line("logs and crash handler ready (%s)", Eden::LogsDir().c_str());
-        for (const char* folder : {"/app0", Eden::kMountedAppDir, Eden::kInstallDir, "/mnt/sandbox/PPSA99016_000/app0"})
+        for (const char* folder : {"/app0", Eden::kMountedAppDir, Eden::kInstallDir, "/mnt/sandbox/PPSA99017_000/app0"})
             Eden::BootTrace::Line("app folder candidate %s: eboot %s, font %s", folder,
                                   Eden::FileExists(std::string{folder} + "/eboot.bin") ? "yes" : "no",
                                   Eden::FileExists(std::string{folder} + "/ui/fonts/montserrat-medium.pefont") ? "yes" : "no");

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Builds the PS5 app and its PPSA99016 folder (after make prepare).
-#   tools/build-package.sh release   build/release/PPSA99016, the configuration that ships
-#   tools/build-package.sh dev ID    build/dev/PPSA99016 (EDEN_DEV_PACKAGE_DIR) with the development switches
+# Builds the PS5 app and its PPSA99017 folder (after make prepare).
+#   tools/build-package.sh release   build/release/PPSA99017, the configuration that ships
+#   tools/build-package.sh dev ID    build/dev/PPSA99017 (EDEN_DEV_PACKAGE_DIR) with the development switches
 #                                    (profiling counters, dev-settings.txt A/B switches) that
 #                                    boots title ID on launch
 set -euo pipefail
@@ -16,7 +16,7 @@ export EDEN_PS5_VULKAN=ON EDEN_VULKAN_DRIVER=RADV
 case $mode in
 release)
     export EDEN_DEV_VULKAN=OFF EDEN_DEV_ROM_ID= EDEN_DEV_PROFILE=OFF EDEN_DEV_WAIT_CALLERS=OFF
-    export EDEN_PACKAGE_DIR="$root/build/release/PPSA99016"
+    export EDEN_PACKAGE_DIR="$root/build/release/PPSA99017"
     ;;
 dev)
     title=${2:?a development build boots one title: tools/build-package.sh dev TITLE_ID}
@@ -24,7 +24,7 @@ dev)
     export EDEN_DEV_VULKAN=ON EDEN_DEV_ROM_ID="$title" EDEN_DEV_PROFILE=ON EDEN_DEV_PROFILE_TITLE="$title"
     # The release-configuration source checks do not apply to development instrumentation.
     export EDEN_SKIP_SOURCE_CHECKS=1
-    export EDEN_PACKAGE_DIR="${EDEN_DEV_PACKAGE_DIR:-$root/build/dev/PPSA99016}"
+    export EDEN_PACKAGE_DIR="${EDEN_DEV_PACKAGE_DIR:-$root/build/dev/PPSA99017}"
     ;;
 *)
     echo "usage: tools/build-package.sh release|dev TITLE_ID" >&2
@@ -32,8 +32,6 @@ dev)
     ;;
 esac
 echo "== Eden for the PS5 ($mode, $(git rev-parse --short HEAD 2>/dev/null || echo source)$(git diff --quiet -- headless tools src 2>/dev/null || echo +dirty))"
-bash tools/check-elevation-client.sh
-python3 -B tools/build-lapy-helper.py
 bash tools/build-headless-native.sh --graphics
 python3 -B tools/check-radv-native.py
 echo "== Package $EDEN_PACKAGE_DIR"

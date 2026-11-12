@@ -769,15 +769,8 @@ std::vector<pe::ui::Game> EdenServices::games() {
 
 std::string EdenServices::game_path(const std::string& file) { return Eden::AssetsPath("roms/" + file); }
 
-bool EdenServices::take_update(pe::ui::UpdateOffer* offer) {
-    Eden::UpdateNotice::Offer found;
-    if (!Eden::UpdateNotice::Take(&found)) return false;
-    offer->version = found.version;
-    offer->size = found.size;
-    offer->installable = found.installable;
-    offer->notes = found.notes;
-    offer->notes_truncated = found.notes_truncated;
-    return true;
+bool EdenServices::take_update(pe::ui::UpdateOffer*) {
+    return false;
 }
 
 bool EdenServices::start_update() { return Eden::UpdateNotice::Begin(); }
