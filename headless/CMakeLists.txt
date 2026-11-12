@@ -102,7 +102,7 @@ if(PS5_NATIVE)
     string(REPLACE "ASSERT(munmap(base_ptr, alloc_size) == 0);" "FreeSparsePages(base_ptr, alloc_size);"
         gpu_page_table "${gpu_page_table}")
     string(REPLACE "void* base = ptr;"
-        "constexpr std::size_t slot_size = 2u * 1024u * 1024u;\n    for (std::size_t offset = 0; offset < first_level_chunk_size; offset += slot_size)\n        CommitSparsePage(reinterpret_cast<std::uintptr_t>(ptr + offset));\n    CommitSparsePage(reinterpret_cast<std::uintptr_t>(ptr + first_level_chunk_size - 1));\n    void* base = ptr;"
+        "constexpr std::size_t slot_size = 2u * 1024u * 1024u;\n    for (std::size_t offset = 0; offset < first_level_chunk_size; offset += slot_size)\n        CommitSparsePage(reinterpret_cast<std::uintptr_t>(ptr) + offset);\n    CommitSparsePage(reinterpret_cast<std::uintptr_t>(ptr) + first_level_chunk_size - 1);\n    void* base = ptr;"
         gpu_page_table "${gpu_page_table}")
     string(REPLACE "const u64 new_end = (start + size) >> first_level_shift;"
         "if (size == 0) return;\n    const u64 limit = u64{1} << address_space_bits;\n    if (!base_ptr || start >= limit || size > limit - start)\n        throw std::out_of_range(\"GPU page table reservation\");\n    const u64 new_end = (start + size - 1) >> first_level_shift;"
