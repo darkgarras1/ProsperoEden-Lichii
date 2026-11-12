@@ -1,13 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Where ProsperoEden keeps things. With filesystem access (elevation/elevation.hpp, requested
-// first thing in main) the app uses real console paths:
-//   app folder     the install location, normally /data/homebrew/PPSA99016
-//   data           /data/prosperoeden: config/ (prosperoeden.json), logs/, covers/, user/
-// Without it (no resident service or local elfldr, or the request failed) the app has no data:
-// it reads the app folder as /app0, keeps only its logs in /download0, and the launcher says
-// that it has no access. It used to keep a second set of settings and saves in /download0
-// then, and a console where access came and went showed one set or the other: saves and
-// settings seemed to be gone.
+// DarkEden stores its settings, saves, logs and game files under /data/darkeden.
 #pragma once
 #include <cstdio>
 #include <string>
@@ -15,12 +7,11 @@
 #include <sys/stat.h>
 
 namespace Eden {
-inline constexpr const char* kDataDir = "/data/prosperoeden";
-inline constexpr const char* kDefaultAssetsDir = "/data/prosperoeden";
-inline constexpr const char* kInstallDir = "/data/homebrew/PPSA99016";
+inline constexpr const char* kDataDir = "/data/darkeden";
+inline constexpr const char* kDefaultAssetsDir = "/data/darkeden";
+inline constexpr const char* kInstallDir = "/data/homebrew/PPSA99017";
 
-// Filesystem access requested at startup: -1 not requested, 0 granted, otherwise the
-// elevation::Status that refused it.
+// Storage access checked at startup: -1 pending, 0 available, otherwise an error code.
 inline int& FilesystemAccessStatus() {
     static int status = -1;
     return status;
@@ -38,7 +29,7 @@ inline bool DirectoryExists(const std::string& path) {
 
 // Where the PS5 mounts the app it runs, whatever the source: a folder anywhere ShadowMountPlus
 // scans (/data, ext or USB drives, its manual list) or an image.
-inline constexpr const char* kMountedAppDir = "/system_ex/app/PPSA99016";
+inline constexpr const char* kMountedAppDir = "/system_ex/app/PPSA99017";
 
 // The app's own files (eboot, ui/, development markers): /app0 while it is still mounted (some
 // kinds of filesystem access keep it), else the PS5's mount of the running app, else the usual
@@ -47,7 +38,7 @@ inline constexpr const char* kMountedAppDir = "/system_ex/app/PPSA99016";
 inline const std::string& AppDir() {
     static const std::string directory = [] {
         if (!FilesystemAccess()) return std::string{"/app0"};
-        for (const char* candidate : {"/app0", kMountedAppDir, kInstallDir, "/mnt/sandbox/PPSA99016_000/app0"})
+        for (const char* candidate : {"/app0", kMountedAppDir, kInstallDir, "/mnt/sandbox/PPSA99017_000/app0"})
             if (FileExists(std::string{candidate} + "/eboot.bin")) return std::string{candidate};
         return std::string{kInstallDir};
     }();
@@ -58,7 +49,7 @@ inline std::string AppFile(std::string_view name) { return AppDir() + "/" + std:
 // Settings, logs, covers and Eden's user folder.
 inline std::string ConfigDir() { return std::string{kDataDir} + "/config"; }
 // The logs alone have a place in the sandbox: they are how a start without access is looked into.
-inline std::string LogsDir() { return FilesystemAccess() ? std::string{kDataDir} + "/logs" : "/download0/eden-headless-g7"; }
+inline std::string LogsDir() { return FilesystemAccess() ? std::string{kDataDir} + "/logs" : "/download0/darkeden"; }
 inline std::string CoversDir() { return std::string{kDataDir} + "/covers"; }
 inline std::string UserDir() { return std::string{kDataDir} + "/user"; }
 inline std::string ConfigFile(std::string_view name) { return ConfigDir() + "/" + std::string(name); }

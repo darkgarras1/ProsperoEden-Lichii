@@ -245,7 +245,7 @@ void Launcher::draw_home(Canvas &c)
     if (textures_.brand() != 0)
         list.rounded_image(textures_.brand(), {120.0f, 72.0f, 72.0f, 72.0f},
                            {0.0f, 0.0f, 1.0f, 1.0f}, 16.0f, kWhite);
-    text(c, "PROSPEROEDEN", 216.0f, baseline(72.0f, 44.0f, theme::kBrand), theme::kBrand,
+    text(c, "DARKEDEN", 216.0f, baseline(72.0f, 44.0f, theme::kBrand), theme::kBrand,
          theme::kText, Align::left, 3.0f);
     // Who is playing is named once there is more than one profile to be.
     const float edition = text(c, fill(tr("PS5 EDITION  /  {0}"), {version_}), 216.0f,
@@ -280,34 +280,35 @@ void Launcher::draw_home(Canvas &c)
 
     // ---- continue playing ----
     begin_band(1, 28.0f);
-    glass(c, kHero, 14.0f, theme::kGlass.with_alpha(0.60f), kWhite.with_alpha(0.125f));
-    cover(c, home_.last_cover, {168.0f, 272.0f, 336.0f, 336.0f}, 16.0f, 1.0f);
-    text(c, tr("CONTINUE PLAYING"), 560.0f, baseline(264.0f, 30.0f, theme::kSmall), theme::kSmall,
+    list.rounded_rect(kHero, 24.0f, theme::kPanel.with_alpha(0.92f));
+    list.rounded_rect({144.0f, 254.0f, 5.0f, 360.0f}, 2.0f, theme::kLime);
+    cover(c, home_.last_cover, {1472.0f, 219.0f, 224.0f, 224.0f}, 16.0f, 1.0f);
+    text(c, tr("CONTINUE PLAYING"), 184.0f, baseline(264.0f, 30.0f, theme::kSmall), theme::kSmall,
          theme::kLime, Align::left, 3.0f);
-    text_block(c, home_.last_file.empty() ? tr("Your next adventure") : home_.last_title, 560.0f,
+    text_block(c, home_.last_file.empty() ? tr("Your next adventure") : home_.last_title, 184.0f,
                baseline(312.0f, 56.0f, theme::kDisplay), theme::kDisplay, 56.0f, theme::kText,
                1120.0f, 2);
     notice(c, home_.last_file.empty() ? tr("Choose a game from your library.") : home_.last_caption,
-           560.0f, baseline(424.0f, 36.0f, theme::kText24), theme::kText24,
+           184.0f, baseline(424.0f, 36.0f, theme::kText24), theme::kText24,
            home_.last_caption_warning ? theme::kWarning : Color::rgb(0xabb8ae), 1040.0f,
            home_.last_caption_warning);
     // The line under it ends before the controllers' label.
     const float info_width =
-        kPadsRight - measure(tr("CONTROLLERS"), theme::kSmall, 3.0f) - 48.0f - 560.0f;
+        kPadsRight - measure(tr("CONTROLLERS"), theme::kSmall, 3.0f) - 48.0f - 184.0f;
     if (!home_.last_language.empty())
         text_shrink(c,
                     fill(tr("Add-ons: {0}  /  Language: {1}"),
                          {addons_line(home_.last_addons, home_.last_mods, home_.last_mods_on),
                           home_.last_language}),
-                    560.0f, baseline(462.0f, 30.0f, theme::kSmall), theme::kSmall,
+                    184.0f, baseline(462.0f, 30.0f, theme::kSmall), theme::kSmall,
                     Color::rgb(0xabb8ae), info_width);
     const char *first = continue_ready ? tr("Launch game") : tr("Open library");
     const char *second = tr("Game details");
     const float button = std::clamp(
         std::max(measure(first, theme::kText24), measure(second, theme::kText24)) + 64.0f,
         kButtonWidth, kButtonWidest);
-    const Rect continue_rect{560.0f, 504.0f, button, 72.0f};
-    const Rect details_rect{560.0f + button + 16.0f, 504.0f, button, 72.0f};
+    const Rect continue_rect{184.0f, 504.0f, button, 72.0f};
+    const Rect details_rect{184.0f + button + 16.0f, 504.0f, button, 72.0f};
     const auto hero_button = [&](const Rect &r, const char *label, float f, bool enabled)
     {
         list.push_opacity(enabled ? 1.0f : 0.4f);
@@ -320,7 +321,7 @@ void Launcher::draw_home(Canvas &c)
     };
     hero_button(continue_rect, first, focus(0), ready);
     hero_button(details_rect, second, focus(4), continue_ready);
-    text(c, tr("Eden emulator for PlayStation 5"), 560.0f, baseline(616.0f, 30.0f, theme::kSmall),
+    text(c, tr("Eden emulator for PlayStation 5"), 184.0f, baseline(616.0f, 30.0f, theme::kSmall),
          theme::kSmall, theme::kFaint);
     draw_controllers(c);
     end_band();
@@ -331,7 +332,7 @@ void Launcher::draw_home(Canvas &c)
     {
         const Rect panel{120.0f, 728.0f, 1680.0f, 152.0f};
         const Color accent = home_.launch_failed ? theme::kWarning : theme::kLime;
-        glass(c, panel, 10.0f, Color::rgb(0x0a1611, 0.62f), kWhite.with_alpha(0.08f), 0.6f);
+        glass(c, panel, 10.0f, Color::rgb(0x0a1b32, 0.62f), kWhite.with_alpha(0.08f), 0.6f);
         list.rounded_rect({panel.x, panel.y + 10.0f, 4.0f, panel.h - 20.0f}, 2.0f, accent);
         notice_block(c, home_.status, 148.0f, baseline(752.0f, 36.0f, theme::kText24),
                      theme::kText24, 36.0f, theme::kText, 1624.0f, 3, home_.launch_failed);

@@ -129,73 +129,7 @@ public:
     }
 };
 
-#ifdef PS5_NATIVE
-// First start with filesystem access: copy what the sandbox kept (settings, covers, Eden's saves
-// and caches) into /data/prosperoeden. Only folders that do not exist yet are filled, and the
-// sandbox copy stays, so an older ProsperoEden still finds its data.
-static void MigrateSandboxData() {
-    const std::filesystem::path sandbox{"/mnt/sandbox/PPSA99016_000/download0"};
-    const std::pair<std::filesystem::path, std::string> moves[] = {
-        {sandbox / "eden-headless-g7/user", Eden::UserDir()},
-        {sandbox / "prosperoeden/covers", Eden::CoversDir()},
-    };
-    const auto options = std::filesystem::copy_options::recursive | std::filesystem::copy_options::skip_existing;
-    for (const auto& [from, to] : moves) {
-        std::error_code error;
-        if (Eden::DirectoryExists(to) || !Eden::DirectoryExists(from.string())) continue;
-        std::filesystem::copy(from, to, options, error);
-        const std::string detail = from.string() + " -> " + to + (error ? " failed: " + error.message() : "");
-        Eden::Report("data migration", detail.c_str());
-    }
-    // Settings files (not the covers folder) go to config/.
-    if (!Eden::DirectoryExists(Eden::ConfigDir()) && Eden::DirectoryExists((sandbox / "prosperoeden").string())) {
-        std::error_code error;
-        std::filesystem::create_directories(Eden::ConfigDir(), error);
-        for (std::filesystem::directory_iterator it{sandbox / "prosperoeden", error}, end; !error && it != end; it.increment(error))
-            if (it->is_regular_file())
-                std::filesystem::copy_file(it->path(), std::filesystem::path{Eden::ConfigDir()} / it->path().filename(),
-                                           std::filesystem::copy_options::skip_existing, error);
-        Eden::Report("data migration", error ? ("settings failed: " + error.message()).c_str() : "settings copied");
-    }
-}
-#endif
 
-#ifdef PS5_NATIVE
-// Game files an early version kept inside the app's folder (assets/ with keys, firmware and
-// roms) move to /data/prosperoeden, where replacing the app cannot take them away: an update
-// that replaces the whole folder left the app without its keys and games. Both are on /data, so
-// it is a rename of each folder. Nothing moves unless all of it can: a folder chosen in Settings,
-// or anything already in /data/prosperoeden, leaves everything where it is.
-static void MoveGameFilesOutOfTheApp() {
-    const std::string from = std::string{Eden::kInstallDir} + "/assets", to = Eden::kDefaultAssetsDir;
-    const std::string saved = Eden::LoadSavedAssetsDir();
-    if ((!saved.empty() && saved != from) || !Eden::FileExists(from + "/keys/prod.keys") ||
-        Eden::FileExists(to + "/keys/prod.keys"))
-        return;
-    static constexpr const char* kFolders[] = {"keys", "firmware", "roms", "updates", "mods", "ryujinx", "save-import"};
-    (void)mkdir(to.c_str(), 0777);
-    for (const char* folder : kFolders) {
-        const std::string target = to + "/" + folder;
-        if (Eden::DirectoryExists(from + "/" + folder) && rmdir(target.c_str()) != 0 && errno != ENOENT) {
-            Eden::Report("game files", ("Left in the app's folder: " + target + " already holds files").c_str());
-            return;
-        }
-    }
-    int moved = 0;
-    for (const char* folder : kFolders) {
-        const std::string source = from + "/" + folder, target = to + "/" + folder;
-        if (!Eden::DirectoryExists(source)) continue;
-        if (std::rename(source.c_str(), target.c_str()) != 0) {
-            Eden::Report("game files", ("Could not move " + source + " to " + target + ": " + std::strerror(errno)).c_str());
-            continue;
-        }
-        ++moved;
-    }
-    if (!saved.empty()) (void)Eden::SaveAssetsDir(to);
-    Eden::Report("game files", (std::to_string(moved) + " folders moved from " + from + " to " + to +
-                                ", where an update of the app leaves them alone").c_str());
-}
-#endif
 
 // A game that has single Joy-Cons held sideways (their hold type, set by the game) is played on a
 // DualSense held as usual: the pad then turns the stick, the button places and the motion by a
@@ -239,35 +173,22 @@ int main(int argc, char** argv) {
         // The PS5 keyboard's module, for a game's text entry: asked for before anything else
         // changes what the app may load (system_keyboard.h).
         Eden::BootTrace::Line("PS5 keyboard module: %#x", static_cast<unsigned>(Eden::PrepareSystemKeyboard()));
-        Eden::BootTrace::Line("requesting filesystem access");
-        // Filesystem access beyond the sandbox, first: every path below depends on it
-        // (assets_dir.h). A resident upstream Lapy service gets the first opportunity; otherwise
-        // the packaged exact-title upstream helper is sent to the local elfldr. ProsperoEden
-        // contains no locally implemented kernel mutation code. If neither path works, the app
-        // keeps its sandbox paths.
+        std::error_code storage_error;
+        std::filesystem::create_directories(Eden::kDataDir, storage_error);
+        Eden::FilesystemAccessStatus() = storage_error.value();
+        Eden::BootTrace::Line("DarkEden storage access status=%d", Eden::FilesystemAccessStatus());
 #if defined(EDEN_DEV_PROFILE)
-        // Development: a start without access, to see what the launcher says then.
         if (access("/app0/no-filesystem-access.txt", F_OK) == 0) Eden::FilesystemAccessStatus() = 99;
-        else
-#endif
-        Eden::FilesystemAccessStatus() = static_cast<int>(elevation::request(elevation::Capability::filesystem));
-        Eden::BootTrace::Line("filesystem access returned status=%d, uid %d/%d gid %d/%d", Eden::FilesystemAccessStatus(),
-                              static_cast<int>(getuid()), static_cast<int>(geteuid()), static_cast<int>(getgid()),
-                              static_cast<int>(getegid()));
-#if defined(EDEN_DEV_PROFILE)
-        // Upstream Lapy deliberately accepts only a single-threaded target. Keep every
-        // development worker behind the completed elevation exchange.
         Eden::Stall::Start();
 #endif
-        // Elevation leaves the effective group (1) apart from the real one (0), and Mesa turns
-        // RADV's disk cache off for a process whose real and effective ids differ, so no
-        // compiled shader was ever kept between sessions. Match them; the effective user is
-        // root, which may set its group.
-        if (getegid() != getgid() && setegid(getgid()) != 0)
-            Eden::Report("filesystem access", "Could not match the effective group; RADV's disk cache stays off");
         if (Eden::FilesystemAccess()) {
-            MigrateSandboxData();
-            MoveGameFilesOutOfTheApp();
+            for (const char* folder : {"keys", "firmware", "roms", "updates", "mods"}) {
+                std::error_code folder_error;
+                std::filesystem::create_directories(std::filesystem::path{Eden::kDataDir} / folder,
+                                                    folder_error);
+                if (folder_error)
+                    Eden::BootTrace::Line("could not create %s: %s", folder, folder_error.message().c_str());
+            }
         }
         for (const auto& folder : {Eden::UserDir(), Eden::ConfigDir(), Eden::CoversDir(), Eden::LogsDir()}) {
             std::error_code folder_error;
@@ -298,7 +219,7 @@ int main(int argc, char** argv) {
         Eden::Crash::Install(Eden::LogsDir(), Eden::kAppVersion, last_crash.restarted);
         Eden::BootTrace::Ready(Eden::LogsDir(), Eden::FilesystemAccess());
         Eden::BootTrace::Line("logs and crash handler ready (%s)", Eden::LogsDir().c_str());
-        for (const char* folder : {"/app0", Eden::kMountedAppDir, Eden::kInstallDir, "/mnt/sandbox/PPSA99016_000/app0"})
+        for (const char* folder : {"/app0", Eden::kMountedAppDir, Eden::kInstallDir, "/mnt/sandbox/PPSA99017_000/app0"})
             Eden::BootTrace::Line("app folder candidate %s: eboot %s, font %s", folder,
                                   Eden::FileExists(std::string{folder} + "/eboot.bin") ? "yes" : "no",
                                   Eden::FileExists(std::string{folder} + "/ui/fonts/montserrat-medium.pefont") ? "yes" : "no");
@@ -513,7 +434,7 @@ int main(int argc, char** argv) {
             for (const auto& entry : Eden::ReadNativeDirectory(folder, rom_error)) {
                 const auto filename = entry.path().filename().string();
                 const auto extension = entry.path().extension();
-                if (extension != ".nsp" && extension != ".xci") continue;
+                if (extension != ".nsp" && extension != ".xci" && extension != ".nup") continue;
                 const auto path = folder + "/" + filename;
                 if (filename.find(development_id) != std::string::npos ||
                     eden_game_title_id(path.c_str()) == development_title) {

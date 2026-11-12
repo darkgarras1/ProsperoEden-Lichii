@@ -86,6 +86,35 @@ list(REMOVE_ITEM common_sources host_memory.cpp sparse_large_vector.cpp)
 set_property(TARGET common PROPERTY SOURCES "${common_sources}")
 target_sources(common PRIVATE "${PORT_ROOT}/src/host_memory.cpp" "${PORT_ROOT}/src/memory_pages.cpp")
 
+# Use the PS5 sparse backing for the GPU's small-page table as well.
+if(PS5_NATIVE)
+    file(READ "${PROJECT_SOURCE_DIR}/src/common/multi_level_page_table.inc" gpu_page_table)
+    set(gpu_table_map "void* base{mmap(nullptr, alloc_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0)};\n    if (base == MAP_FAILED)\n        base = nullptr;")
+    foreach(expected "${gpu_table_map}" "ASSERT(munmap(base_ptr, alloc_size) == 0);" "void* base = ptr;" "const u64 new_end = (start + size) >> first_level_shift;")
+        string(FIND "${gpu_page_table}" "${expected}" gpu_table_at)
+        if(gpu_table_at LESS 0)
+            message(FATAL_ERROR "Pinned MultiLevelPageTable implementation changed")
+        endif()
+    endforeach()
+    string(REPLACE "${gpu_table_map}"
+        "void* base = AllocateSparsePages(alloc_size);\n    if (!base) throw std::bad_alloc{};"
+        gpu_page_table "${gpu_page_table}")
+    string(REPLACE "ASSERT(munmap(base_ptr, alloc_size) == 0);" "FreeSparsePages(base_ptr, alloc_size);"
+        gpu_page_table "${gpu_page_table}")
+    string(REPLACE "void* base = ptr;"
+        "constexpr std::size_t slot_size = 2u * 1024u * 1024u;\n    for (std::size_t offset = 0; offset < first_level_chunk_size; offset += slot_size)\n        CommitSparsePage(reinterpret_cast<std::uintptr_t>(ptr) + offset);\n    CommitSparsePage(reinterpret_cast<std::uintptr_t>(ptr) + first_level_chunk_size - 1);\n    void* base = ptr;"
+        gpu_page_table "${gpu_page_table}")
+    string(REPLACE "const u64 new_end = (start + size) >> first_level_shift;"
+        "if (size == 0) return;\n    const u64 limit = u64{1} << address_space_bits;\n    if (!base_ptr || start >= limit || size > limit - start)\n        throw std::out_of_range(\"GPU page table reservation\");\n    const u64 new_end = (start + size - 1) >> first_level_shift;"
+        gpu_page_table "${gpu_page_table}")
+    write_derived("${PORT_BUILD_DIR}/multi_level_page_table.cpp"
+        "#include <cstddef>\n#include <cstdint>\n#include <new>\n#include <stdexcept>\nnamespace Common {\nvoid* AllocateSparsePages(std::size_t) noexcept;\nvoid FreeSparsePages(void*, std::size_t) noexcept;\nvoid CommitSparsePage(std::uintptr_t) noexcept;\n}\n${gpu_page_table}\nnamespace Common {\ntemplate class MultiLevelPageTable<u64>;\ntemplate class MultiLevelPageTable<u32>;\n}\n")
+    get_target_property(common_sources common SOURCES)
+    list(REMOVE_ITEM common_sources multi_level_page_table.cpp)
+    set_property(TARGET common PROPERTY SOURCES "${common_sources}")
+    target_sources(common PRIVATE "${PORT_BUILD_DIR}/multi_level_page_table.cpp")
+endif()
+
 # Eden's large tables (the guest page table, the GPU's address tables) stay sparse on the PS5:
 # their vector reserves its range with AllocateSparsePages and announces a first write to
 # CommitSparsePage (src/memory_pages.cpp) where upstream maps anonymous memory and calls
@@ -746,10 +775,10 @@ string(REPLACE "    std::unique_lock lk{m_guard};\n    m_on_interrupt.wait(lk, [
     ::Eden::Performance::CountIdle(m_core_index, ::Eden::Performance::NowNs() - start, slept);
 }]=] physical_core_source "${physical_core_source}")
 string(REPLACE "${prefetch_old}"
-    "            } else {\n                interface->LogBacktrace(process);\n                if (prefetch_abort)\n                    ::Eden::RecordGuestFault(\"guest thread \" + Core::GetThreadName(thread).value_or(\"?\") +\n                                             \" jumped to an unmapped address\");\n            }\n            thread->RequestSuspend(kernel, SuspendType::Debug);"
+    "            } else {\n                interface->LogBacktrace(process);\n                if (prefetch_abort) {\n                    const auto& context = thread->GetContext();\n                    std::fprintf(stderr, \"DARKEDEN_GUEST_FAULT pc=0x%llx lr=0x%llx sp=0x%llx\\n\",\n                                 static_cast<unsigned long long>(context.pc),\n                                 static_cast<unsigned long long>(context.lr),\n                                 static_cast<unsigned long long>(context.sp));\n                    ::Eden::RecordGuestFault(\"guest thread \" + Core::GetThreadName(thread).value_or(\"?\") +\n                                             \" jumped to an unmapped address\");\n                }\n            }\n            thread->RequestSuspend(kernel, SuspendType::Debug);"
     physical_core_source "${physical_core_source}")
 write_derived("${PORT_BUILD_DIR}/physical_core.cpp"
-    "#include \"${EDEN_PORT_DIR}/guest_fault.h\"\n#include \"${EDEN_PORT_DIR}/performance.h\"\n#include \"core/arm/debug.h\"\n${physical_core_source}")
+    "#include \"${EDEN_PORT_DIR}/guest_fault.h\"\n#include \"${EDEN_PORT_DIR}/performance.h\"\n#include \"core/arm/debug.h\"\n#include <cstdio>\n${physical_core_source}")
 list(REMOVE_ITEM core_sources "hle/kernel/physical_core.cpp")
 list(APPEND core_sources "${PORT_BUILD_DIR}/physical_core.cpp")
 if(EDEN_DEV_PROFILE)
@@ -891,6 +920,26 @@ write_derived("${PORT_BUILD_DIR}/application_functions.cpp" "${app_functions_sou
 list(REMOVE_ITEM core_sources "hle/service/am/service/application_functions.cpp")
 list(APPEND core_sources "${PORT_BUILD_DIR}/application_functions.cpp")
 set_property(TARGET core PROPERTY SOURCES "${core_sources}")
+# Experimental PS5 budget for NX2: reduce the application pool by exactly the
+# DRAM reduction, keeping the graphics reservation and other pools intact.
+if(PS5_NATIVE)
+    set(nx2_budget_source "hle/kernel/board/nintendo/nx/k_system_control.cpp")
+    file(READ "${PROJECT_SOURCE_DIR}/src/core/${nx2_budget_source}" nx2_budget)
+    foreach(expected "return 12_GiB + KSystemControl::Nx2GraphicsServerMemorySize" "return 9809_MiB")
+        string(FIND "${nx2_budget}" "${expected}" nx2_budget_at)
+        if(nx2_budget_at LESS 0)
+            message(FATAL_ERROR "Pinned Switch 2 memory layout changed: ${expected}")
+        endif()
+    endforeach()
+    string(REPLACE "return 12_GiB + KSystemControl::Nx2GraphicsServerMemorySize"
+        "return 7_GiB + KSystemControl::Nx2GraphicsServerMemorySize" nx2_budget "${nx2_budget}")
+    string(REPLACE "return 9809_MiB" "return 9809_MiB - 5_GiB" nx2_budget "${nx2_budget}")
+    write_derived("${PORT_BUILD_DIR}/k_system_control.cpp" "${nx2_budget}")
+    list(REMOVE_ITEM core_sources "${nx2_budget_source}")
+    list(APPEND core_sources "${PORT_BUILD_DIR}/k_system_control.cpp")
+    set_property(TARGET core PROPERTY SOURCES "${core_sources}")
+endif()
+
 # Core's NS query service owns this implementation from frontend_common.
 target_sources(core PRIVATE "${PROJECT_SOURCE_DIR}/src/frontend_common/play_time_manager.cpp")
 

@@ -464,6 +464,9 @@ public:
     u8* base{};
     size_t size;
     std::unique_ptr<Window> window;
+#ifdef PS5_NATIVE
+    bool anonymous_backing = false;
+#endif
 #ifndef PS5_NATIVE
     int fd = -1; // Host checks: a shared backing the window can alias.
 #endif
@@ -476,6 +479,25 @@ public:
             void* mapped = mmap(nullptr, requested, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
             if (mapped == MAP_FAILED) throw std::system_error(errno, std::generic_category(), "Backing map");
             base = static_cast<u8*>(mapped);
+        }
+#endif
+#ifdef PS5_NATIVE
+        // Switch 2's full address map can exceed the direct-memory address range.
+        // Try an ordinary writable mapping without physical aliases in that case.
+        const auto direct_limit = sceKernelGetDirectMemorySize();
+        if (direct_limit > 0 && requested >= static_cast<size_t>(direct_limit)) {
+            void* mapped = mmap(nullptr, requested, PROT_READ | PROT_WRITE,
+                                MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+            if (mapped == MAP_FAILED) {
+                const int failure = errno;
+                std::fprintf(stderr, "EDEN_ANON_BACKING failed bytes=%zu errno=%d\n",
+                             requested, failure);
+                throw std::system_error(failure, std::generic_category(), "Anonymous guest backing");
+            }
+            base = static_cast<u8*>(mapped);
+            anonymous_backing = true;
+            std::fprintf(stderr, "EDEN_ANON_BACKING mapped bytes=%zu fastmem=off\n", requested);
+            return;
         }
 #endif
         if (!base) base = static_cast<u8*>(AllocateMemoryPages(requested));
@@ -491,6 +513,12 @@ public:
     }
     ~Impl() {
         window.reset();
+#ifdef PS5_NATIVE
+        if (anonymous_backing) {
+            if (munmap(base, size) != 0) std::abort();
+            return;
+        }
+#endif
 #ifndef PS5_NATIVE
         if (fd >= 0) {
             if (munmap(base, size) != 0 || close(fd) != 0) std::abort();

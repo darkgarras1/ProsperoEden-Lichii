@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# ProsperoEden build. `make` builds the release files in dist/; `make help` lists every target.
+# DarkEden build. `make` builds the release files in dist/; `make help` lists every target.
 # Missing dependencies are fetched at their pinned revisions (tools/deps.json); nothing that
 # already exists is changed. The build runs on Linux (Ubuntu 26.04; WSL works).
 
@@ -18,12 +18,12 @@ PS5_HOST ?=
 PS5_PORT ?= 2121
 
 PYTHON := python3 -B
-RELEASE_APP := build/release/PPSA99016
+RELEASE_APP := build/release/PPSA99017
 
 .PHONY: help release package dev prepare deps deps-status toolchain test install clean distclean
 
 help: ## List the targets and variables
-	@echo 'ProsperoEden build - make [target] [VARIABLE=value]'
+	@echo 'DarkEden build - make [target] [VARIABLE=value]'
 	@echo
 	@awk 'BEGIN { FS = ":.*## " } /^[a-z][a-z-]*:.*## / { printf "  %-12s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 	@echo
@@ -35,10 +35,10 @@ help: ## List the targets and variables
 release: package ## Release files in dist/: ZIP, SHA256SUMS, release notes (default)
 	$(PYTHON) tools/ci/make-dist.py $(RELEASE_APP)
 
-package: prepare ## Build the app as released: build/release/PPSA99016
+package: prepare ## Build the app as released: build/release/PPSA99017
 	bash tools/build-package.sh release
 
-dev: prepare ## Development build that boots DEV_TITLE: build/dev/PPSA99016
+dev: prepare ## Development build that boots DEV_TITLE: build/dev/PPSA99017
 	@[[ -n "$(DEV_TITLE)" ]] || { echo 'Set DEV_TITLE=<16-digit title ID> (or write it to .local/dev-profile-title)'; exit 2; }
 	bash tools/build-package.sh dev $(DEV_TITLE)
 
@@ -58,7 +58,7 @@ test: deps ## Host (Linux) build of the emulator and its test suites (ROMM_CHECK
 	bash tools/check-elevation-client.sh
 	bash tools/build-headless-host.sh
 
-install: ## Copy build/release/PPSA99016 to a console over FTP (PS5_HOST=<address>)
+install: ## Copy build/release/PPSA99017 to a console over FTP (PS5_HOST=<address>)
 	@[[ -n "$(PS5_HOST)" ]] || { echo 'Set PS5_HOST=<console address>'; exit 2; }
 	$(PYTHON) tools/install-ftp.py $(PS5_HOST) $(RELEASE_APP) --port $(PS5_PORT)
 

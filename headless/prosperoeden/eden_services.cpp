@@ -569,15 +569,15 @@ pe::ui::Home EdenServices::home() {
     home.setup_ready = setup_.empty() && Eden::FilesystemAccess();
     if (!Eden::FilesystemAccess()) {
         // No data is kept anywhere else (storage_paths.h): say so, and start nothing.
-        home.status = fill(tr("ProsperoEden could not get access to the console's storage, so it cannot read your settings, saves and games. Nothing was changed. Close ProsperoEden and open it again. (Code {0})"),
+        home.status = fill(tr("DarkEden could not get access to the console's storage, so it cannot read your settings, saves and games. Nothing was changed. Close DarkEden and open it again. (Code {0})"),
                            {std::to_string(Eden::FilesystemAccessStatus())});
     } else if (!home.setup_ready) {
         home.status = fill(tr("Setup required: {0} Open Settings, Game files to choose the folder that holds your "
-                              "keys, firmware and roms folders (or add the files to {1}), then reopen ProsperoEden."),
+                              "keys, firmware and roms folders (or add the files to {1}), then reopen DarkEden."),
                            {SetupMessage(setup_), Eden::AssetsDir()});
     } else if (launch_error_.starts_with(Eden::Crash::kNotice)) {
         // The previous run ended with a crash report (headless/crash_report.h).
-        home.status = fill(tr("ProsperoEden stopped because of an error. A report was saved to {0}."),
+        home.status = fill(tr("DarkEden stopped because of an error. A report was saved to {0}."),
                            {launch_error_.substr(Eden::Crash::kNotice.size())});
         home.launch_failed = true;
     } else if (!launch_error_.empty()) {
@@ -688,12 +688,10 @@ std::vector<pe::ui::Game> EdenServices::games() {
     };
     for (const auto& entry : entries) {
         const std::string file = entry.path().filename().string();
-        const std::size_t dot = file.find_last_of('.');
-        if (file == "." || file == ".." || dot == std::string::npos) continue;
-        std::string format = file.substr(dot + 1);
+        if (!Eden::ValidRomFilename(file)) continue;
+        std::string format = file.substr(file.size() - 3);
         std::transform(format.begin(), format.end(), format.begin(),
                        [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
-        if (format != "NSP" && format != "XCI") continue;
         const std::string path = Eden::AssetsPath("roms/" + file);
         struct stat info {};
         if (stat(path.c_str(), &info) != 0 || !S_ISREG(info.st_mode)) continue;
@@ -769,15 +767,8 @@ std::vector<pe::ui::Game> EdenServices::games() {
 
 std::string EdenServices::game_path(const std::string& file) { return Eden::AssetsPath("roms/" + file); }
 
-bool EdenServices::take_update(pe::ui::UpdateOffer* offer) {
-    Eden::UpdateNotice::Offer found;
-    if (!Eden::UpdateNotice::Take(&found)) return false;
-    offer->version = found.version;
-    offer->size = found.size;
-    offer->installable = found.installable;
-    offer->notes = found.notes;
-    offer->notes_truncated = found.notes_truncated;
-    return true;
+bool EdenServices::take_update(pe::ui::UpdateOffer*) {
+    return false;
 }
 
 bool EdenServices::start_update() { return Eden::UpdateNotice::Begin(); }
@@ -1055,7 +1046,7 @@ pe::ui::FolderInfo EdenServices::folder_info(const std::string& directory) {
     pe::ui::FolderInfo info;
     info.keys = Eden::FileExists(JoinPath(directory, "keys/prod.keys"));
     info.firmware = CountFiles(JoinPath(directory, "firmware"), {".nca"});
-    info.games = CountFiles(JoinPath(directory, "roms"), {".nsp", ".xci"});
+    info.games = CountFiles(JoinPath(directory, "roms"), {".nsp", ".xci", ".nup"});
     return info;
 }
 
